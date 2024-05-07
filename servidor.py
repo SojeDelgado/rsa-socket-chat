@@ -1,9 +1,12 @@
+import random
 import socket
 import threading
+import generacion_llaves
+from User import User
 
 # Global variable to maintain client connections along with their usernames
 connections = {}
-
+users = []
 
 def handle_user_connection(connection: socket.socket, address: str) -> None:
     '''
@@ -16,15 +19,24 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
         connections[connection] = username
         print(f'{username} has joined the chat.')
 
-        # Notify all clients about the new user
-        notify_clients(f'{username} has joined the chat.', connection)
+        p = random.randint(10, 100)
+        q = random.randint(10, 100)
+        n = p * q
+        e = generacion_llaves.generate_e(p, q)
+        phi_n = generacion_llaves.phi(p, q)
+        d = generacion_llaves.mod_inverse(e, phi_n)
 
-        # Send current user list to the new user
-        send_user_list(connection)
+        # Llave publica (e,d)
+        # Llave privada (d,n)
+
+        # Crear una instancia de User
+        user = User(username, [e, d], [d, n])
+        users.append(user)
+        
 
         while True:
+            imprimir_usuarios(connection)
             msg = connection.recv(1024)
-
             if msg:
                 print(f'{connections[connection]}: {msg.decode()}')
                 msg_to_send = f'{connections[connection]}: {msg.decode()}'
@@ -71,7 +83,7 @@ def notify_clients(message: str, exclude_client: socket.socket = None) -> None:
     for client_conn in connections:
         if client_conn != exclude_client:
             try:
-                client_conn.send(f'[SERVER_MSG] {message}'.encode())
+                client_conn.send(f'{message}'.encode())
             except Exception as e:
                 print(f'Error notifying client: {e}')
                 remove_connection(client_conn)
@@ -87,6 +99,18 @@ def send_user_list(client_conn: socket.socket) -> None:
     except Exception as e:
         print(f'Error sending user list to client: {e}')
         remove_connection(client_conn)
+
+
+def imprimir_usuarios(connection: socket.socket) -> None:
+    mensaje = "-"
+    for u in users:
+        mensaje += f"{u.username}, {u.public_key}\n"
+
+    try:
+        notify_clients(mensaje, connection)
+    except Exception as e:
+        print(f'Error sending user list to client: {e}')
+        remove_connection(connection)
 
 
 def server() -> None:

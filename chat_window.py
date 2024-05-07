@@ -54,7 +54,11 @@ class Chat_Window(tk.Toplevel):
         while True:
             try:
                 message = self.socket_instance.recv(1024).decode()
-                self.display_message(message)
+                if message.startswith('-'):
+                    message = message[len('-'):]
+                    self.update_public_keys(message)
+                else:
+                    self.display_message(message)
             except Exception as e:
                 print(f'Error receiving message: {e}')
                 break
@@ -79,6 +83,14 @@ class Chat_Window(tk.Toplevel):
 
     def close_previous_window(self):
         self.parent.destroy()
+
+
+    def update_public_keys(self, public_key):
+        self.text_public_keys.config(state="normal")
+        self.text_public_keys.delete('1.0', tk.END)
+        self.text_public_keys.insert(tk.END, public_key + '\n')
+        self.text_public_keys.see(tk.END)  # Scroll to the bottom
+        self.text_public_keys.config(state="disabled")
 
 if __name__ == "__main__":
     root = tk.Tk()
